@@ -4,10 +4,14 @@ const socket= require('socket.io');
 const path = require('path');
 const cors = require('cors')
 const childProcess = require('child_process');
+const mongoose = require('mongoose')
+const bodyParser = require('body-parser');
+const User = require('./models/User');
 
 const app = express();
 app.use(cors());
-app.use(express.urlencoded());
+// app.use(express.urlencoded());
+app.use(bodyParser.json())
 
 const SocketIO = socket.Server
 const spawn = childProcess.spawn
@@ -91,15 +95,23 @@ io.on('connection', socket => {
     });
 })
 
-
-app.post("/auth", (req, res)=>{
-    const streamKey = req.body.key 
-    // TODO: Use Database here instead
-    if(streamKey === "devansh"){
-        res.status(200).send();
-        return;
+app.post('/register', async (req, res)=>{
+    const {username, password, streamKey} = req.body;
+    if(!streamKey){
+        streamKey = Math.random().toString(36).substring(2, 16);
     }
-    res.status(404).send();
+    const user = new User({ username, password, streamKey});
+    await user.save()
+    res.json({message: 'User Registered', streamKey})
+})
+
+app.post("/auth", async(req, res)=>{
+    const {streamKey} = req.body
+    const user = await User.findOne({streamKey})
+    if(user){
+        return res.json({ success: true })
+    }
+    res.status(401).json({success:false, message:'Invalid Stream Key'})
 })
 
 

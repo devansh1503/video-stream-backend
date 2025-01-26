@@ -1,6 +1,6 @@
 version: '3.9'
 services:
-  app:
+  backend:
     build:
       context: .
       dockerfile: ./Dockerfile 
@@ -9,6 +9,8 @@ services:
       - ./:/home/app
     ports:
       - "4000:4000"
+    depends_on:
+      - mongo
   
   rtmp:
     build: ./rtmp
@@ -18,3 +20,17 @@ services:
     container_name: rtmp_server
     volumes:
       - ./data:/tmp/hls
+
+  mongo:
+    image: mongo
+    container_name: mongo_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongo_data:/data/db    
+
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    ports:
+      - "8083:8081"
