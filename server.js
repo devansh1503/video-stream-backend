@@ -7,12 +7,13 @@ const childProcess = require('child_process');
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser');
 const User = require('./models/User');
+const bcrypt = require('bcryptjs');
+const { connectDB } = require('./middleware/database');
 
 const app = express();
 app.use(cors());
 // app.use(express.urlencoded());
 app.use(bodyParser.json())
-
 const SocketIO = socket.Server
 const spawn = childProcess.spawn
 
@@ -95,14 +96,52 @@ io.on('connection', socket => {
     });
 })
 
-app.post('/register', async (req, res)=>{
-    const {username, password, streamKey} = req.body;
-    if(!streamKey){
-        streamKey = Math.random().toString(36).substring(2, 16);
+app.post('/register', async (req, res) => {
+    const { username, password, streamKey } = req.body;
+
+    try {
+        const existingUser = await User.findOne({ username });
+        if (existingUser) {
+            return res.status(400).json({ message: 'Username already exists' });
+        }
+
+        const existingStreamKey = await User.findOne({ streamKey });
+        if (existingStreamKey) {
+            return res.status(400).json({ message: 'Stream key already in use' });
+        }
+
+        const user = new User({
+            username,
+            password,
+            streamKey,
+        });
+
+        await user.save();
+
+        res.status(201).json({
+            message: 'User Registered',
+            streamKey,
+        });
+    } catch (error) {
+        console.error('Error registering user:', error);
+        res.status(500).json({ message: 'Internal server error' });
     }
-    const user = new User({ username, password, streamKey});
-    await user.save()
-    res.json({message: 'User Registered', streamKey})
+});
+
+app.post('/login', async (req, res)=>{
+    try{
+        const {username, password} = req.body;
+        const user = await User.findOne({username})
+        if(await bcrypt.compare(password, user.password)){
+            res.json({success:true, streamKey:user.streamKey})
+            return;
+        }
+        res.status(400).json({success:false})
+    }
+    catch (error) {
+        console.error('Error registering user:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
 })
 
 app.post("/auth", async(req, res)=>{
@@ -114,6 +153,6 @@ app.post("/auth", async(req, res)=>{
     res.status(401).json({success:false, message:'Invalid Stream Key'})
 })
 
-
+connectDB()
 
 server.listen(4000, ()=>console.log("Running on http://localhost:4000/"))

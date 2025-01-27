@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 
-const connect = async() => {
+const connectDB = async() => {
     try{
         const options = {
             useNewUrlParser: true,
@@ -16,5 +16,5 @@ const connect = async() => {
 }
 
 module.exports = {
-    connect
+    connectDB
 }
